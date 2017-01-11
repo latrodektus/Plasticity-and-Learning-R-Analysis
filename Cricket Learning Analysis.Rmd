@@ -1,0 +1,244 @@
+---
+Import data for the developmental plasticity examination. File name is "dp.csv"
+```{r}
+dp = read.table(file.choose(),  na.strings =".", header=T, sep=",")
+```
+
+Import data for the alaysis of the Morris Water Maze data. File name is "mwm.csv"
+
+```{r}
+mwm = read.table(file.choose(),  na.strings =".", header=T, sep=",")
+```
+
+Import data for the analysis of the linear maze. File name is "linearmaze.csv"
+```{r}
+linear = read.table(file.choose(),  na.strings =".", header=T, sep=",")
+```
+
+Load the necessary libraries
+```{r}
+library(lme4)
+library(lmerTest)
+library(ggplot2)
+library(plyr)
+```
+
+MANOVA looking at the developmental pattern and the individual ANOVAs for all individuals in both experiments
+```{r}
+developMANOVA <- manova(cbind(DevRate, Gweight, Gsize)~Treatment, data=dp)
+summary(developMANOVA)
+summary.aov(developMANOVA)
+```
+
+MWM analysis
+------------
+
+Centering and Subseting data 
+```{r}
+mwm$DevRateCent <- scale(mwm$DevRate, center = TRUE, scale = TRUE)
+mwm$GweightCent <- scale(mwm$Gweight, center = TRUE, scale = TRUE)
+mwm$WeightAfterCent <- scale(mwm$WeightAfter, center = TRUE, scale = TRUE)
+
+mwm$StartPosition <- factor(mwm$StartPosition)
+
+##To examine the first trial on it's own
+mwmTrial1 <- subset(mwm, Trial=="1")
+
+##To remove trial 1, MT, and D2 from the trials
+mwmTrials<-mwm[-which(mwm$Trial == "MT"), ]
+mwmTrials<-mwmTrials[-which(mwmTrials$Trial == "D2"), ]
+mwmTrials<-mwmTrials[-which(mwmTrials$Trial == "1"), ]
+
+##To examine the D2 trial on it's own
+mwmTrialD2 <- subset(mwm, Trial=="D2")
+
+##To examine the MT trial on it's own
+mwmTrialMT <- subset(mwm, Trial=="MT")
+
+##To examine only the trials where individuals were successful
+mwmTrialSucc <- subset(mwm, Complete=="Yes")
+```
+
+
+
+Do any factors predict success rates
+```{r}
+SuccessRate <- lm(Successes ~ Treatment + DevRateCent + WeightAfterCent, data = mwmTrial1)
+summary(SuccessRate)
+
+
+ggplot(mwmTrial1, aes(x = DevRate, y = Successes)) + 
+  geom_point(size = 4, position = position_dodge(width = 0.0005)) + 
+  theme_bw() + geom_smooth(method=lm,  fullrange=T) + 
+  xlab("Development Rate") +
+  ylab("The Number of Successful Trials") +
+  theme(axis.line = element_line(colour = "black"),
+        axis.text=element_text(size=18),
+        axis.title=element_text(size=20,face="bold"),
+        axis.title.y=element_text(vjust=0.25),
+        axis.title.x=element_text(vjust=0.25),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()
+        )         
+        
+        
+```
+
+Of the successful individuals, is there anything that predicts their performance?
+```{r}
+CompTime <- lmer(Time_0 ~ Treatment + DevRate + WeightAfter + (1 | Cricket), data = mwmTrialSucc)
+summary(CompTime)
+```
+
+
+How treatment, development rate, trial number, the starting position of the cricket affect the time to completion. 
+
+```{r}
+##Here it is with a max of 300 seconds, which assumes completion
+Success <- lmer(Time_300 ~ Treatment + DevRate + WeightAfter + Trial + StartPosition + DevRate*Trial + (1 | Cricket), data = mwmTrials)
+anova(Success)
+summary(Success)
+
+
+ggplot(mwmTrials, aes(x=Trial, y=Time_300)) + geom_violin() + guides(fill=FALSE) +
+  ylab("Time to Completion") +
+  xlab("Trial Number") + theme_bw() +
+  theme(axis.line = element_line(colour = "black"),
+        axis.text=element_text(size=18),
+        axis.title=element_text(size=20,face="bold"),
+        axis.title.y=element_text(vjust=0.65),
+        axis.title.x=element_text(vjust=0.25),
+        axis.text=element_text(size=18),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) 
+
+
+
+```
+
+
+
+Linear Maze analysis
+--------------------
+
+Subseting data 
+```{r}
+linear$DevRateScale <- scale(linear$DevRate, center = TRUE, scale = TRUE)
+linear$GweightScale <- scale(linear$Gweight, center = TRUE, scale = TRUE)
+linear$WeightAfterScale <- scale(linear$WeightAfter, center = TRUE, scale = TRUE)
+
+linear$logTE_ALL <- log(linear$TE_ALL+1)
+linear$logT_tcP <- log(linear$T_tcP+1)
+linear$logT_tcS <- log(linear$T_tcS+1)
+
+linear$Complete <- factor(linear$Complete)
+
+
+##To separate Day 1 and Day 2
+lmDay1 <- subset(linear, Day=="1")
+lmDay2 <- subset(linear, Day=="2")
+
+##To separate Just Day 1 Trial 1
+lmTrial1 <- subset(lmDay1, Trial=="1")
+
+
+##To separate the MT from the rest of the trials
+lmDay1Trials <-lmDay1[-which(lmDay1$Trial == "MT"), ]
+lmDay1Trials <-lmDay1Trials[-which(lmDay1$Trial == "1"), ]
+
+##Just successful ones
+lmDay1TrialsComp <- subset(lmDay1Trials, Complete=="1")
+
+##Just the mirror trial
+lmDay1MT <-subset(lmDay1, Trial=="MT")
+
+
+```
+
+Do treatments differ by how many trials females complete on average
+
+```{r}
+ddply(lmTrial1, c("Treatment"), summarise,
+                     N = length(NumTrials),
+                     mean = mean(NumTrials),
+                     sd = sd(NumTrials),
+                     se = sd/sqrt(N))
+
+
+Complete <- glmer(Complete ~ DevRateScale + WeightAfterScale + Treatment + Trial + (1|Cricket), family=binomial, data=lmDay1Trials)
+anova(Complete)
+summary(Complete)
+
+
+TimeComplete <- lmer(TOTAL.T ~ Treatment + Trial + DevRateScale + WeightAfterScale + (1|Cricket), data = lmDay1TrialsComp)
+anova(TimeComplete)
+summary(TimeComplete)
+
+
+Errors <- lmer(logTE_ALL ~ DevRateScale + WeightAfterScale + Treatment + Trial + (1|Cricket), data=lmDay1Trials)
+anova(Errors)
+summary(Errors)
+
+Pauses <- lmer(logT_tcP ~ DevRateScale + WeightAfterScale + Treatment + Trial + (1|Cricket), data=lmDay1Trials)
+anova(Pauses)
+summary(Pauses)
+
+Shoves <- lmer(logT_tcS ~ DevRateScale + WeightAfterScale + Treatment + Trial + (1|Cricket), data=lmDay1Trials)
+summary(Shoves)
+anova(Shoves)
+
+ddply(lmDay1Trials, c("Treatment"), summarise,
+                     N = length(logT_tcP),
+                     mean = mean(logT_tcP),
+                     sd = sd(logT_tcP),
+                     se = sd/sqrt(N))
+
+ggplot(lmDay1Trials, aes(x=Treatment, y=T_tcP)) + geom_violin() + 
+  guides(fill=FALSE) + theme_bw() +
+  xlab("Treatment") +
+  ylab("The Number of Pauses") +
+  theme(axis.line = element_line(colour = "black"),
+        axis.text=element_text(size=18),
+        axis.title=element_text(size=20,face="bold"),
+        axis.title.y=element_text(vjust=0.65),
+        axis.title.x=element_text(vjust=0.25),
+        axis.text=element_text(size=18),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()
+        )
+        
+ggplot(lmDay1TrialsComp, aes(x=Treatment, y=TOTAL.T)) + geom_violin() + guides(fill=FALSE) +
+  ylab("Time to Completion") +
+  xlab("Trial Number") + theme_bw() +
+  theme(axis.line = element_line(colour = "black"),
+        axis.text=element_text(size=18),
+        axis.title=element_text(size=20,face="bold"),
+        axis.title.y=element_text(vjust=0.65),
+        axis.title.x=element_text(vjust=0.25),
+        axis.text=element_text(size=18),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) 
+
+
+CompleteMT <- glm(Complete ~ DevRateScale + WeightAfterScale + Treatment, family=binomial, data=lmDay1MT)
+summary(CompleteMT)
+
+
+TimeCompleteMT <- lm(TOTAL.T ~ Treatment + DevRateScale + WeightAfterScale, data = lmDay1MT)
+anova(TimeCompleteMT)
+summary(TimeCompleteMT)
+
+Day2 <- glm(Complete ~ DevRateScale + WeightAfterScale + Treatment, family=binomial, data=lmDay2)
+summary(Day2)
+
+TimeCompleteDay2 <- lm(TOTAL.T ~ Treatment + DevRateScale + WeightAfterScale, data = lmDay2)
+anova(TimeCompleteDay2)
+
+```
+
+
+
