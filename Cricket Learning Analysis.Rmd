@@ -41,13 +41,13 @@ mwm$WeightAfterCent <- scale(mwm$WeightAfter, center = TRUE, scale = TRUE)
 
 mwm$StartPosition <- factor(mwm$StartPosition)
 
-##To examine the first trial on it's own
-mwmTrial1 <- subset(mwm, Trial=="1")
+##To create a single row for each individual where information on completeion success is stored
+mwmTrial1 <- subset(mwm, Trial=="0")
 
-##To remove trial 1, MT, and D2 from the trials
+##To remove trial 0 (the training trial), MT, and D2 from the trials
 mwmTrials<-mwm[-which(mwm$Trial == "MT"), ]
 mwmTrials<-mwmTrials[-which(mwmTrials$Trial == "D2"), ]
-mwmTrials<-mwmTrials[-which(mwmTrials$Trial == "1"), ]
+mwmTrials<-mwmTrials[-which(mwmTrials$Trial == "0"), ]
 
 ##To examine the D2 trial on it's own
 mwmTrialD2 <- subset(mwm, Trial=="D2")
@@ -68,8 +68,8 @@ summary(SuccessRate)
 
 
 ggplot(mwmTrial1, aes(x = DevRate, y = Successes)) + 
-  geom_point(size = 4, position = position_dodge(width = 0.0005)) + 
-  theme_bw() + geom_smooth(method=lm,  fullrange=T) + 
+  geom_point(size = 4, position = position_jitter(width=0.0005), aes(color=Treatment)) + 
+  theme_bw() + geom_smooth(method=lm,  fullrange=T) + expand_limits(y=c(0,8)) + 
   xlab("Development Rate") +
   ylab("The Number of Successful Trials") +
   theme(axis.line = element_line(colour = "black"),
@@ -102,8 +102,9 @@ summary(Success)
 
 
 ggplot(mwmTrials, aes(x=Trial, y=Time_300)) + geom_violin() + guides(fill=FALSE) +
-  ylab("Time to Completion") +
+  ylab("Time to Completion (s)") + 
   xlab("Trial Number") + theme_bw() +
+  stat_summary(fun.y="mean", geom="point", size=3) +
   theme(axis.line = element_line(colour = "black"),
         axis.text=element_text(size=18),
         axis.title=element_text(size=20,face="bold"),
@@ -114,7 +115,7 @@ ggplot(mwmTrials, aes(x=Trial, y=Time_300)) + geom_violin() + guides(fill=FALSE)
         panel.grid.minor = element_blank(),
         panel.background = element_blank()) 
 
-
+table(mwmTrials$Trial)
 
 ```
 
@@ -199,6 +200,7 @@ ggplot(lmDay1Trials, aes(x=Treatment, y=T_tcP)) + geom_violin() +
   guides(fill=FALSE) + theme_bw() +
   xlab("Treatment") +
   ylab("The Number of Pauses") +
+  stat_summary(fun.y="mean", geom="point", size=3) +
   theme(axis.line = element_line(colour = "black"),
         axis.text=element_text(size=18),
         axis.title=element_text(size=20,face="bold"),
