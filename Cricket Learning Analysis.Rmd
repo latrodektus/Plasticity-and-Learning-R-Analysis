@@ -67,7 +67,7 @@ SuccessRate <- lm(Successes ~ Treatment + DevRateCent + WeightAfterCent, data = 
 summary(SuccessRate)
 
 
-ggplot(mwmTrial1, aes(x = DevRate, y = Successes)) + 
+plot1 <- ggplot(mwmTrial1, aes(x = DevRate, y = Successes)) + 
   geom_point(size = 4, position = position_jitter(width=0.0005), aes(color=Treatment)) + 
   theme_bw() + geom_smooth(method=lm,  fullrange=T) + expand_limits(y=c(0,8)) + 
   xlab("Development Rate") +
@@ -82,7 +82,14 @@ ggplot(mwmTrial1, aes(x = DevRate, y = Successes)) +
         panel.background = element_blank()
         )         
         
-        
+ggsave(
+  "Figure3.png",
+  plot1,
+  width = 8.25,
+  height = 5.25,
+  dpi = 1200
+)
+
 ```
 
 Of the successful individuals, is there anything that predicts their performance?
@@ -101,7 +108,7 @@ anova(Success)
 summary(Success)
 
 
-ggplot(mwmTrials, aes(x=Trial, y=Time_300)) + geom_violin() + guides(fill=FALSE) +
+Plot2 <- ggplot(mwmTrials, aes(x=Trial, y=Time_300)) + geom_violin() + guides(fill=FALSE) +
   ylab("Time to Completion (s)") + 
   xlab("Trial Number") + theme_bw() +
   stat_summary(fun.y="mean", geom="point", size=3) +
@@ -116,6 +123,14 @@ ggplot(mwmTrials, aes(x=Trial, y=Time_300)) + geom_violin() + guides(fill=FALSE)
         panel.background = element_blank()) 
 
 table(mwmTrials$Trial)
+
+ggsave(
+  "Figure4.png",
+  plot2,
+  width = 8.25,
+  height = 5.25,
+  dpi = 1200
+)
 
 ```
 
@@ -196,8 +211,9 @@ ddply(lmDay1Trials, c("Treatment"), summarise,
                      sd = sd(logT_tcP),
                      se = sd/sqrt(N))
 
-ggplot(lmDay1Trials, aes(x=Treatment, y=T_tcP)) + geom_violin() + 
+plot3 <- ggplot(lmDay1Trials, aes(x=Treatment, y=T_tcP)) + geom_violin() + 
   guides(fill=FALSE) + theme_bw() +
+  ylim (0, 80) +
   xlab("Treatment") +
   ylab("The Number of Pauses") +
   stat_summary(fun.y="mean", geom="point", size=3) +
@@ -211,6 +227,14 @@ ggplot(lmDay1Trials, aes(x=Treatment, y=T_tcP)) + geom_violin() +
         panel.grid.minor = element_blank(),
         panel.background = element_blank()
         )
+ 
+ggsave(
+  "Figure5.png",
+  plot3,
+  width = 8.25,
+  height = 5.25,
+  dpi = 1200
+) 
         
 ggplot(lmDay1TrialsComp, aes(x=Treatment, y=TOTAL.T)) + geom_violin() + guides(fill=FALSE) +
   ylab("Time to Completion") +
